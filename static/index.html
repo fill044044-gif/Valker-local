@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Walker Local</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Боковая панель">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">W</div>
+        <div>
+          <div class="brand-title">Walker Local</div>
+          <div class="brand-subtitle">Планировщик задач</div>
+        </div>
+      </div>
+
+      <section class="sidebar-section">
+        <label class="field-label" for="current-user">Текущий пользователь</label>
+        <select id="current-user" class="user-select">
+          <option value="">Загрузка пользователей...</option>
+        </select>
+        <div id="current-role" class="role-hint">Роль не выбрана</div>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="section-head">
+          <h2>Заведения</h2>
+          <span id="locations-count" class="count-pill">0</span>
+        </div>
+        <ul id="locations-list" class="location-list" aria-live="polite">
+          <li class="muted-row">Загрузка...</li>
+        </ul>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="section-head">
+          <h2>Фильтры</h2>
+        </div>
+        <div class="filter-stack">
+          <button class="filter-item active" type="button">
+            <span>Все задачи</span>
+            <span class="counter" id="counter-all">0</span>
+          </button>
+          <button class="filter-item" type="button">
+            <span>Новые</span>
+            <span class="counter" id="counter-new">0</span>
+          </button>
+          <button class="filter-item" type="button">
+            <span>В работе</span>
+            <span class="counter" id="counter-progress">0</span>
+          </button>
+          <button class="filter-item" type="button">
+            <span>Просрочены</span>
+            <span class="counter danger" id="counter-overdue">0</span>
+          </button>
+          <button class="filter-item" type="button">
+            <span>На проверке</span>
+            <span class="counter" id="counter-review">0</span>
+          </button>
+          <button class="filter-item" type="button">
+            <span>Выполнена</span>
+            <span class="counter success" id="counter-done">0</span>
+          </button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <h1>Рабочая область</h1>
+          <p id="workspace-subtitle">Выберите пользователя и заведение для просмотра задач</p>
+        </div>
+        <button class="primary-button" type="button" id="create-task-button">Создать задачу</button>
+      </header>
+
+      <section class="toolbar" aria-label="Фильтры задач">
+        <div class="search-box">
+          <span aria-hidden="true">Поиск</span>
+          <input id="task-search" type="search" placeholder="Название, исполнитель, статус">
+        </div>
+        <select id="status-filter" class="compact-select">
+          <option value="">Все статусы</option>
+          <option value="Новая">Новая</option>
+          <option value="В работе">В работе</option>
+          <option value="На проверке">На проверке</option>
+          <option value="Выполнена">Выполнена</option>
+          <option value="Просрочена">Просрочена</option>
+        </select>
+        <select id="priority-filter" class="compact-select">
+          <option value="">Все приоритеты</option>
+          <option value="Низкий">Низкий</option>
+          <option value="Обычный">Обычный</option>
+          <option value="Высокий">Высокий</option>
+          <option value="Критический">Критический</option>
+        </select>
+      </section>
+
+      <section class="tasks-area" aria-label="Список задач">
+        <div class="tasks-head">
+          <div>
+            <h2>Задачи</h2>
+            <p id="tasks-summary">Загрузка задач...</p>
+          </div>
+          <span id="last-updated" class="last-updated">-</span>
+        </div>
+
+        <div id="overdue-section" class="task-section overdue-section hidden">
+          <div class="task-section-title">
+            <h3>Просроченные</h3>
+            <span id="overdue-section-count" class="section-count">0</span>
+          </div>
+          <div id="overdue-tasks" class="task-grid"></div>
+        </div>
+
+        <div id="regular-section" class="task-section">
+          <div class="task-section-title">
+            <h3>Текущие задачи</h3>
+            <span id="regular-section-count" class="section-count">0</span>
+          </div>
+          <div id="regular-tasks" class="task-grid"></div>
+        </div>
+
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-title">Задач пока нет</div>
+          <div class="empty-text">Созданные задачи появятся здесь автоматически.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+INFO:     127.0.0.1:64215 - "GET /openapi.json HTTP/1.1" 200 OK
+
+=== MOCK EMAIL REPORT ===
+To: owner@walker.local
+Subject: Walker Local: отчет по задачам (2)
+--- TEXT ---
+Отчет Walker Local
+Сформировал: Управляющий (owner)
+Всего задач: 2
+
+#1 | Step 2 API test task | Биг-вен | исполнитель: Менеджер Биг-вен | статус: В работе | срок: Без срока
+#2 | Overdue auto-check task | Биг-вен | исполнитель: Менеджер Биг-вен | статус: Просрочена | срок: 2026-05-25 07:12
+--- HTML ---
+<h2>Отчет Walker Local</h2><p><b>Сформировал:</b> Управляющий (owner)</p><p><b>Всего задач:</b> 2</p><table border='1' cellpadding='6' cellspacing='0'><thead><tr><th>ID</th><th>Название</th><th>Заведение</th><th>Исполнитель</th><th>Приоритет</th><th>Статус</th><th>Срок</th></tr></thead><tbody><tr><td>#1</td><td>Step 2 API test task</td><td>Биг-вен</td><td>Менеджер Биг-вен</td><td>Высокий</td><td>В работе</td><td>Без срока</td></tr><tr><td>#2</td><td>Overdue auto-check task</td><td>Биг-вен</td><td>Менеджер Биг-вен</td><td>Обычный</td><td>Просрочена</td><td>2026-05-25 07:12</td></tr></tbody></table>
+=== END MOCK EMAIL REPORT ===
+
+INFO:     127.0.0.1:64215 - "POST /api/reports/email HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62325 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62325 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "GET /script.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55721 - "GET /api/locations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60058 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60058 - "GET /style.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53975 - "GET /script.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53975 - "GET /api/users HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60058 - "GET /api/locations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51223 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51223 - "GET /favicon.ico HTTP/1.1" 404 Not Found
