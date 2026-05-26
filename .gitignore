@@ -5,3 +5,4 @@ venv/
 .env
 walker.db
 *.log
+_local_runtime_backup/

@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Walker Local Demo</title>
+  <style>
+    :root {
+      --bg: #f3f6f9;
+      --panel: #ffffff;
+      --line: #d8dee8;
+      --text: #17212f;
+      --muted: #687386;
+      --nav: #111827;
+      --accent: #2f5fd7;
+      --danger: #c93535;
+      --success: #18794e;
+      --warning: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 300px minmax(760px, 1fr);
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: var(--nav);
+      color: #eef2f7;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark {
+      width: 42px; height: 42px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: #4169e1; font-weight: 700;
+    }
+    .brand strong { display: block; font-size: 18px; }
+    .brand span, .hint { color: #aeb8c8; }
+    .section h2 {
+      margin: 0 0 10px;
+      color: #cbd5e1;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      padding: 11px 12px;
+      outline: none;
+    }
+    .sidebar select {
+      background: #1f2937;
+      color: #fff;
+      border-color: #374151;
+    }
+    .location, .filter {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 40px;
+      padding: 9px 11px;
+      margin-bottom: 8px;
+      border: 1px solid #2f3a4c;
+      border-radius: 7px;
+      background: #161e2d;
+      color: #eef2f7;
+      text-align: left;
+    }
+    .location.active, .filter.active { border-color: #5572d9; background: #1b2a4b; }
+    .badge {
+      min-width: 28px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #283244;
+      text-align: center;
+      color: #dce5f2;
+    }
+
+    .main { padding: 24px; }
+    .topbar, .toolbar, .board {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 24px rgba(20, 32, 48, .06);
+    }
+    .topbar {
+      padding: 20px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    h1, h2, h3 { margin: 0; }
+    .topbar p, .board-subtitle { margin: 6px 0 0; color: var(--muted); }
+    .primary {
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 12px 20px;
+      font-weight: 700;
+    }
+    .secondary {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 9px 12px;
+      font-weight: 700;
+    }
+    .danger-button {
+      border-color: #e3b9b9;
+      color: #a63b3b;
+    }
+    .toolbar {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr 220px 220px;
+      gap: 12px;
+    }
+    .board { padding: 20px; }
+    .board-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .column {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 360px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+    .column-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .task {
+      border: 1px solid var(--line);
+      border-left: 5px solid #98a2b3;
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .task.status-work { border-left-color: var(--accent); }
+    .task.status-done { border-left-color: var(--success); background: #f1fbf6; }
+    .task.status-overdue { border-left-color: var(--danger); background: #fff5f5; }
+    .task.priority-critical { box-shadow: inset 0 0 0 2px rgba(217,119,6,.22); }
+    .task h3 { font-size: 17px; margin-bottom: 6px; }
+    .task p { margin: 0 0 12px; color: #4b5563; }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .meta span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .meta strong { display: block; margin-top: 3px; }
+    .pill {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #eef2f7;
+      font-weight: 700;
+    }
+    .comment {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #f8fafc;
+      padding: 10px;
+      color: #4b5563;
+      margin: 10px 0;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .empty {
+      padding: 34px 12px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 23, 42, .55);
+      padding: 24px;
+    }
+    .modal.hidden { display: none; }
+    .panel {
+      width: min(920px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, .25);
+    }
+    .panel.small { width: min(520px, 100%); }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .icon {
+      width: 34px; height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 20px;
+    }
+    form { padding: 20px; }
+    label { display: block; font-weight: 700; margin-bottom: 14px; }
+    label span { display: block; margin-bottom: 7px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .error {
+      border: 1px solid #e8b9b6;
+      border-radius: 6px;
+      background: #fff6f5;
+      color: #a33d35;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .error.hidden { display: none; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">W</div>
+        <div><strong>Walker Local</strong><span>Планировщик задач</span></div>
+      </div>
+
+      <section class="section">
+        <h2>Текущий пользователь</h2>
+        <select id="userSelect"></select>
+        <p id="roleHint" class="hint"></p>
+        <button id="openLogin" class="filter" type="button"><span>Сменить пользователя</span></button>
+      </section>
+
+      <section class="section">
+        <h2>Заведения</h2>
+        <div id="locations"></div>
+      </section>
+
+      <section class="section">
+        <h2>Фильтры</h2>
+        <div id="filters"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1>Рабочая область</h1>
+          <p id="subtitle"></p>
+        </div>
+        <button id="createTask" class="primary" type="button">Создать задачу</button>
+      </header>
+
+      <section class="toolbar">
+        <input id="search" type="search" placeholder="Название, исполнитель, статус">
+        <select id="statusSelect"></select>
+        <select id="prioritySelect"></select>
+      </section>
+
+      <section class="board">
+        <div class="board-head">
+          <div>
+            <h2>Задачи</h2>
+            <p id="summary" class="board-subtitle"></p>
+          </div>
+          <span id="updated" class="hint"></span>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <div class="column-title"><span>Мне поставили</span><span id="assignedCount">0</span></div>
+            <div id="assignedTasks"></div>
+          </div>
+          <div class="column">
+            <div class="column-title"><span>Я поставил</span><span id="authoredCount">0</span></div>
+            <div id="authoredTasks"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="loginModal" class="modal">
+    <div class="panel small">
+      <div class="panel-head"><h2>Вход по коду</h2></div>
+      <form id="loginForm">
+        <label><span>Пользователь</span><select id="loginUser"></select></label>
+        <label><span>Четырехзначный код</span><input id="loginCode" maxlength="4" inputmode="numeric" required></label>
+        <div id="loginError" class="error hidden"></div>
+        <div class="modal-actions"><button class="primary" type="submit">Войти</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="taskModal" class="modal hidden">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Создать задачу</h2>
+        <button id="closeTask" class="icon" type="button">×</button>
+      </div>
+      <form id="taskForm">
+        <label><span>Название</span><input id="title" required></label>
+        <label><span>Описание</span><textarea id="description" rows="4"></textarea></label>
+        <div class="grid">
+          <label id="locationField"><span>Заведение</span><select id="taskLocation"></select></label>
+          <label><span>Исполнитель</span><select id="assignee"></select></label>
+          <label><span>Приоритет</span><select id="priority"></select></label>
+          <label><span>Срок выполнения</span><input id="due" type="datetime-local"></label>
+        </div>
+        <label><span>Комментарий</span><textarea id="comment" rows="3"></textarea></label>
+        <div id="taskError" class="error hidden"></div>
+        <div class="modal-actions">
+          <button id="cancelTask" class="secondary" type="button">Отмена</button>
+          <button class="primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const MASTER_CODE = "0000";
+    const STATUSES = ["Новая", "В работе", "На проверке", "Выполнена", "Просрочена", "Отменена"];
+    const PRIORITIES = ["Низкий", "Обычный", "Высокий", "Критический"];
+    const locations = [
+      { id: 1, name: "Биг Бен" },
+      { id: 2, name: "Аксон" },
+      { id: 3, name: "Лагерная" },
+      { id: 4, name: "Все заведения", system: true }
+    ];
+    const users = [
+      { id: 1, name: "Генеральный директор", role: "module_director", code: "1500", locationIds: [1,2,3,4] },
+      { id: 2, name: "Директор розницы", role: "director", code: "1000", locationIds: [1,2,3,4] },
+      { id: 3, name: "Управляющей модуля", role: "owner", code: "2000", locationIds: [1,2,3] },
+      { id: 4, name: "Менеджер Биг Бен", role: "manager", code: "2101", locationIds: [1] },
+      { id: 5, name: "Менеджер Аксон", role: "manager", code: "2202", locationIds: [2] },
+      { id: 6, name: "Менеджер Лагерная", role: "manager", code: "2303", locationIds: [3] }
+    ];
+    let tasks = JSON.parse(localStorage.getItem("walkerDemoTasks") || "null") || [
+      taskSeed("Проверить витрину", "Сверить чистоту и выкладку", 3, 2, 3, "Новая", "Обычный"),
+      taskSeed("Окна", "Привести окна в порядок", 1, 3, 4, "В работе", "Высокий"),
+      taskSeed("Отчет по смене", "Сдать итоговый комментарий", 4, 1, 2, "На проверке", "Обычный")
+    ];
+    let currentUserId = 3;
+    let selectedLocationId = "";
+    let selectedStatus = "";
+    let selectedPriority = "";
+
+    const $ = (id) => document.getElementById(id);
+
+    function taskSeed(title, description, locationId, authorId, assigneeId, status, priority) {
+      return {
+        id: Date.now() + Math.floor(Math.random() * 100000),
+        title, description, locationId, authorId, assigneeId, status, priority,
+        dueDate: "", completedAt: "", comment: "Комментариев пока нет"
+      };
+    }
+    function save() { localStorage.setItem("walkerDemoTasks", JSON.stringify(tasks)); }
+    function user(id) { return users.find((item) => item.id === Number(id)); }
+    function location(id) { return locations.find((item) => item.id === Number(id)); }
+    function currentUser() { return user(currentUserId); }
+    function canSee(task) {
+      const me = currentUser();
+      return task.assigneeId === me.id || task.authorId === me.id;
+    }
+    function canAssignTo(author, assignee) {
+      if (author.role === "module_director") return assignee.role === "director";
+      if (author.role === "director") return assignee.role === "owner";
+      if (author.role === "owner") return assignee.role === "manager";
+      if (author.role === "manager") return assignee.id === author.id;
+      return false;
+    }
+    function allowedAssignees() {
+      const me = currentUser();
+      return users.filter((candidate) => canAssignTo(me, candidate));
+    }
+    function effectiveLocationForAssignee(assigneeId) {
+      const me = currentUser();
+      const assignee = user(assigneeId);
+      if (me.role === "module_director" || me.role === "director") return 4;
+      if (assignee.role === "manager") return assignee.locationIds[0];
+      return Number($("taskLocation").value || me.locationIds[0]);
+    }
+    function visibleTasks() {
+      const query = $("search").value.trim().toLowerCase();
+      return tasks.filter(canSee).filter((task) => {
+        if (selectedLocationId && task.locationId !== Number(selectedLocationId)) return false;
+        if (selectedStatus && task.status !== selectedStatus) return false;
+        if (selectedPriority && task.priority !== selectedPriority) return false;
+        const haystack = [task.title, task.description, task.status, task.priority, user(task.assigneeId).name, user(task.authorId).name, location(task.locationId).name].join(" ").toLowerCase();
+        return !query || haystack.includes(query);
+      });
+    }
+    function roleText(role) {
+      return {
+        module_director: "Генеральный директор",
+        director: "Директор розницы",
+        owner: "Управляющей модуля",
+        manager: "Менеджер"
+      }[role] || role;
+    }
+
+    function init() {
+      renderStaticSelects();
+      bind();
+      renderAll();
+      $("loginModal").classList.remove("hidden");
+    }
+    function bind() {
+      $("openLogin").addEventListener("click", () => $("loginModal").classList.remove("hidden"));
+      $("loginForm").addEventListener("submit", login);
+      $("createTask").addEventListener("click", openTaskModal);
+      $("closeTask").addEventListener("click", closeTaskModal);
+      $("cancelTask").addEventListener("click", closeTaskModal);
+      $("taskForm").addEventListener("submit", createTask);
+      $("search").addEventListener("input", renderTasks);
+      $("statusSelect").addEventListener("change", (e) => { selectedStatus = e.target.value; syncFilters(); renderTasks(); });
+      $("prioritySelect").addEventListener("change", (e) => { selectedPriority = e.target.value; renderTasks(); });
+      $("userSelect").addEventListener("change", (e) => { currentUserId = Number(e.target.value); $("loginModal").classList.remove("hidden"); });
+    }
+    function renderStaticSelects() {
+      $("loginUser").innerHTML = users.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
+      $("userSelect").innerHTML = users.map((u) => `<option value="${u.id}">${u.name} · ${roleText(u.role)}</option>`).join("");
+      $("statusSelect").innerHTML = `<option value="">Все статусы</option>` + STATUSES.map((s) => `<option>${s}</option>`).join("");
+      $("prioritySelect").innerHTML = `<option value="">Все приоритеты</option>` + PRIORITIES.map((p) => `<option>${p}</option>`).join("");
+      $("priority").innerHTML = PRIORITIES.map((p) => `<option ${p === "Обычный" ? "selected" : ""}>${p}</option>`).join("");
+    }
+    function login(event) {
+      event.preventDefault();
+      const selected = user($("loginUser").value);
+      const code = $("loginCode").value.trim();
+      if (code !== selected.code && code !== MASTER_CODE) {
+        $("loginError").textContent = "Неверный код пользователя";
+        $("loginError").classList.remove("hidden");
+        return;
+      }
+      currentUserId = selected.id;
+      selectedLocationId = "";
+      $("loginError").classList.add("hidden");
+      $("loginCode").value = "";
+      $("loginModal").classList.add("hidden");
+      renderAll();
+    }
+    function renderAll() {
+      const me = currentUser();
+      $("userSelect").value = me.id;
+      $("loginUser").value = me.id;
+      $("roleHint").textContent = `${me.name} · доступ: ${me.locationIds.map((id) => location(id).name).join(", ")}`;
+      $("subtitle").textContent = `${me.name}: доступ ${me.locationIds.filter((id) => id !== 4).map((id) => location(id).name).join(", ") || "Все заведения"}`;
+      renderLocations();
+      renderFilters();
+      renderTasks();
+    }
+    function renderLocations() {
+      const me = currentUser();
+      const available = locations.filter((loc) => !loc.system && me.locationIds.includes(loc.id));
+      $("locations").innerHTML = available.map((loc) => {
+        const count = tasks.filter((task) => canSee(task) && task.locationId === loc.id).length;
+        return `<button class="location ${selectedLocationId === String(loc.id) ? "active" : ""}" data-location="${loc.id}" type="button"><span>${loc.name}</span><span class="badge">${count}</span></button>`;
+      }).join("");
+      $("locations").querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedLocationId = selectedLocationId === button.dataset.location ? "" : button.dataset.location;
+          renderAll();
+        });
+      });
+    }
+    function renderFilters() {
+      const list = [
+        ["", "Все задачи"],
+        ["Новая", "Новые"],
+        ["В работе", "В работе"],
+        ["Просрочена", "Просрочены"],
+        ["На проверке", "На проверке"],
+        ["Выполнена", "Выполнена"]
+      ];
+      const base = tasks.filter(canSee);
+      $("filters").innerHTML = list.map(([value, label]) => {
+        const count = value ? base.filter((task) => task.status === value).length : base.length;
+        return `<button class="filter ${selectedStatus === value ? "active" : ""}" data-status="${value}" type="button"><span>${label}</span><span class="badge">${count}</span></button>`;
+      }).join("");
+      $("filters").querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedStatus = button.dataset.status;
+          syncFilters();
+          renderTasks();
+        });
+      });
+    }
+    function syncFilters() {
+      $("statusSelect").value = selectedStatus;
+      document.querySelectorAll(".filter").forEach((button) => button.classList.toggle("active", button.dataset.status === selectedStatus));
+    }
+    function renderTasks() {
+      const rows = visibleTasks();
+      const assigned = rows.filter((task) => task.assigneeId === currentUserId);
+      const authored = rows.filter((task) => task.authorId === currentUserId);
+      $("assignedCount").textContent = assigned.length;
+      $("authoredCount").textContent = authored.length;
+      $("summary").textContent = `${rows.length} задач для ${currentUser().name}`;
+      $("updated").textContent = `Обновлено: ${new Date().toLocaleTimeString("ru-RU")}`;
+      $("assignedTasks").innerHTML = assigned.length ? assigned.map(renderTask).join("") : `<div class="empty">Нет входящих задач</div>`;
+      $("authoredTasks").innerHTML = authored.length ? authored.map(renderTask).join("") : `<div class="empty">Нет задач, которые вы поставили</div>`;
+      document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", handleAction));
+      renderLocations();
+      renderFilters();
+    }
+    function renderTask(task) {
+      const statusClass = task.status === "В работе" ? "status-work" : task.status === "Выполнена" ? "status-done" : task.status === "Просрочена" ? "status-overdue" : "";
+      const priorityClass = task.priority === "Критический" ? "priority-critical" : "";
+      return `<article class="task ${statusClass} ${priorityClass}">
+        <h3>${task.title}</h3>
+        <p>${task.description || "Описание не указано"}</p>
+        <div class="meta">
+          <div><span>Статус</span><strong class="pill">${task.status}</strong></div>
+          <div><span>Приоритет</span><strong class="pill">${task.priority}</strong></div>
+          <div><span>Заведение</span><strong>${location(task.locationId).name}</strong></div>
+          <div><span>Исполнитель</span><strong>${user(task.assigneeId).name}</strong></div>
+          <div><span>Автор</span><strong>${user(task.authorId).name}</strong></div>
+          <div><span>Срок</span><strong>${task.dueDate || "Без срока"}</strong></div>
+        </div>
+        <div class="comment">${task.comment || "Комментариев пока нет"}</div>
+        <div class="actions">${renderActions(task)}</div>
+      </article>`;
+    }
+    function renderActions(task) {
+      const me = currentUser();
+      const actions = [];
+      if (task.assigneeId === me.id && task.status === "Новая") actions.push(button(task.id, "В работе", "В работу"));
+      if (task.assigneeId === me.id && task.status === "В работе") actions.push(button(task.id, "На проверке", "На проверку"));
+      if (task.authorId === me.id && task.status === "На проверке") {
+        actions.push(button(task.id, "Выполнена", "Задача выполнена"));
+        actions.push(button(task.id, "В работе", "Вернуть в работу"));
+        actions.push(button(task.id, "Отменена", "Задача отклонена", "danger-button"));
+      }
+      if (task.authorId === me.id && ["Выполнена", "Отменена"].includes(task.status)) {
+        actions.push(`<button class="secondary danger-button" data-action="delete" data-id="${task.id}" type="button">Удалить</button>`);
+      }
+      return actions.join("");
+    }
+    function button(id, status, label, extra = "") {
+      return `<button class="secondary ${extra}" data-action="status" data-id="${id}" data-status="${status}" type="button">${label}</button>`;
+    }
+    function handleAction(event) {
+      const id = Number(event.currentTarget.dataset.id);
+      const task = tasks.find((item) => item.id === id);
+      if (event.currentTarget.dataset.action === "delete") {
+        tasks = tasks.filter((item) => item.id !== id);
+      } else {
+        task.status = event.currentTarget.dataset.status;
+        task.comment = prompt("Комментарий к задаче", task.comment || "") || task.comment;
+      }
+      save();
+      renderAll();
+    }
+    function openTaskModal() {
+      const me = currentUser();
+      $("taskForm").reset();
+      $("taskError").classList.add("hidden");
+      $("assignee").innerHTML = allowedAssignees().map((u) => `<option value="${u.id}">${u.name} · ${roleText(u.role)}</option>`).join("");
+      $("taskLocation").innerHTML = locations.filter((loc) => !loc.system && me.locationIds.includes(loc.id)).map((loc) => `<option value="${loc.id}">${loc.name}</option>`).join("");
+      $("locationField").style.display = (me.role === "module_director" || me.role === "director") ? "none" : "block";
+      $("taskModal").classList.remove("hidden");
+    }
+    function closeTaskModal() { $("taskModal").classList.add("hidden"); }
+    function createTask(event) {
+      event.preventDefault();
+      const assigneeId = Number($("assignee").value);
+      if (!canAssignTo(currentUser(), user(assigneeId))) {
+        $("taskError").textContent = "Недостаточно прав для назначения этому пользователю";
+        $("taskError").classList.remove("hidden");
+        return;
+      }
+      tasks.unshift({
+        id: Date.now(),
+        title: $("title").value.trim(),
+        description: $("description").value.trim(),
+        locationId: effectiveLocationForAssignee(assigneeId),
+        authorId: currentUserId,
+        assigneeId,
+        priority: $("priority").value,
+        status: "Новая",
+        dueDate: $("due").value ? new Date($("due").value).toLocaleString("ru-RU") : "",
+        completedAt: "",
+        comment: $("comment").value.trim()
+      });
+      save();
+      closeTaskModal();
+      renderAll();
+    }
+    init();
+  </script>
+</body>
+</html>
