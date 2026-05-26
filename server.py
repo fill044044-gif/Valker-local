@@ -38,7 +38,8 @@ STATUSES = {
     "Перенесена",
 }
 FINAL_STATUSES = {"Выполнена", "Отменена", "Перенесена"}
-GLOBAL_ROLES = {"director", "owner"}
+GLOBAL_ROLES = {"director", "module_director", "owner"}
+MASTER_ACCESS_CODE = "0000"
 
 
 user_locations = Table(
@@ -69,6 +70,7 @@ class User(Base):  # type: ignore[misc, valid-type]
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     role = Column(String, nullable=False, index=True)
+    access_code = Column(String, nullable=True, index=True)
 
     locations = relationship(
         "Location",
@@ -143,12 +145,16 @@ class UserRead(BaseModel):
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1)
     description: str = ""
-    location_id: int
+    location_id: Optional[int] = None
     author_id: int
     assignee_id: Optional[int] = None
     priority: str = "Обычный"
     due_at: Optional[datetime] = None
     comment: str = ""
+
+
+class AuthLogin(BaseModel):
+    code: str = Field(..., min_length=4, max_length=4)
 
 
 class TaskStatusUpdate(BaseModel):
@@ -215,6 +221,27 @@ def session_scope() -> Generator[Session, None, None]:
 
 def migrate_existing_db() -> None:
     with engine.begin() as connection:
+        user_table_exists = connection.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        ).first()
+        if user_table_exists:
+            user_columns = {
+                row[1]
+                for row in connection.execute(text("PRAGMA table_info(users)")).fetchall()
+            }
+            if "access_code" not in user_columns:
+                connection.execute(text("ALTER TABLE users ADD COLUMN access_code VARCHAR"))
+
+            connection.execute(
+                text("UPDATE locations SET name = 'Биг Бен' WHERE name IN ('Биг-вен', 'Биг Вэн')")
+            )
+            connection.execute(
+                text(
+                    "UPDATE users SET name = 'Менеджер Биг Бен' "
+                    "WHERE name IN ('Менеджер Биг-вен', 'Менеджер Биг Вэн')"
+                )
+            )
+
         task_table_exists = connection.execute(
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'")
         ).first()
@@ -287,29 +314,41 @@ def init_db() -> None:
             for location in db.scalars(select(Location)).all()
         }
 
-        for name in ("Биг-вен", "Аксон", "Лагерная"):
+        for name in ("Биг Бен", "Аксон", "Лагерная", "Все заведения"):
             if name not in locations_by_name:
                 locations_by_name[name] = Location(name=name)
                 db.add(locations_by_name[name])
         db.flush()
 
-        all_locations = list(locations_by_name.values())
+        all_locations = [
+            locations_by_name["Биг Бен"],
+            locations_by_name["Аксон"],
+            locations_by_name["Лагерная"],
+        ]
+        global_location = locations_by_name["Все заведения"]
         merge_duplicate_users(db, "owner", "Управляющей модуля", all_locations)
         merge_duplicate_users(db, "director", "Директор розницы", all_locations)
+        merge_duplicate_users(db, "module_director", "Генеральный директор", all_locations)
         db.flush()
 
         existing_user_names = set(db.scalars(select(User.name)).all())
         default_users = [
-            ("Директор розницы", "director", all_locations),
-            ("Управляющей модуля", "owner", all_locations),
-            ("Менеджер Биг-вен", "manager", [locations_by_name["Биг-вен"]]),
-            ("Менеджер Аксон", "manager", [locations_by_name["Аксон"]]),
-            ("Менеджер Лагерная", "manager", [locations_by_name["Лагерная"]]),
+            ("Директор розницы", "director", all_locations + [global_location], "1000"),
+            ("Генеральный директор", "module_director", all_locations + [global_location], "1500"),
+            ("Управляющей модуля", "owner", all_locations, "2000"),
+            ("Менеджер Биг Бен", "manager", [locations_by_name["Биг Бен"]], "2101"),
+            ("Менеджер Аксон", "manager", [locations_by_name["Аксон"]], "2202"),
+            ("Менеджер Лагерная", "manager", [locations_by_name["Лагерная"]], "2303"),
         ]
 
-        for name, role, locations in default_users:
+        for name, role, locations, access_code in default_users:
             if name not in existing_user_names:
-                db.add(User(name=name, role=role, locations=locations))
+                db.add(User(name=name, role=role, locations=locations, access_code=access_code))
+            else:
+                user = db.scalars(select(User).where(User.name == name)).first()
+                if user is not None:
+                    user.access_code = access_code
+                    user.locations = locations
 
 
 init_db()
@@ -339,6 +378,10 @@ def serialize_user(user: User) -> Dict[str, Any]:
         "role": user.role,
         "locations": [serialize_location(location) for location in user.locations],
     }
+
+
+def serialize_public_user(user: User) -> Dict[str, Any]:
+    return serialize_user(user)
 
 
 def serialize_task(task: Task) -> Dict[str, Any]:
@@ -398,6 +441,44 @@ def ensure_can_manage_location(user: User, location_id: int) -> None:
         status_code=403,
         detail="Недостаточно прав для работы с задачами этого заведения",
     )
+
+
+def ensure_role_assignment(author: User, assignee: Optional[User], location_id: int) -> None:
+    if author.role == "module_director":
+        if assignee is not None and assignee.role == "director":
+            return
+        raise HTTPException(
+            status_code=403,
+            detail="Генеральный директор может ставить задачи только Директору розницы",
+        )
+
+    if author.role == "director":
+        if assignee is not None and assignee.role == "owner":
+            return
+        raise HTTPException(
+            status_code=403,
+            detail="Директор розницы может ставить задачи только Управляющей модуля",
+        )
+
+    if author.role == "owner":
+        if assignee is not None and assignee.role == "manager" and location_id in user_location_ids(assignee):
+            return
+        raise HTTPException(
+            status_code=403,
+            detail="Управляющей модуля может ставить задачи только менеджеру выбранного заведения",
+        )
+
+    if author.role == "manager":
+        return
+
+
+def get_global_location(db: Session) -> Location:
+    location = db.scalars(select(Location).where(Location.name == "Все заведения")).first()
+    if location is None:
+        location = Location(name="Все заведения")
+        db.add(location)
+        db.flush()
+    return location
 
 
 def mark_overdue_tasks(db: Session) -> int:
@@ -512,6 +593,21 @@ def read_users(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     return [serialize_user(user) for user in users]
 
 
+@app.post("/api/auth/login", response_model=UserRead)
+def login(payload: AuthLogin, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    if not payload.code.isdigit():
+        raise HTTPException(status_code=422, detail="Код должен состоять из 4 цифр")
+
+    query = select(User).options(selectinload(User.locations))
+    if payload.code == MASTER_ACCESS_CODE:
+        user = db.scalars(query.order_by(User.id)).first()
+    else:
+        user = db.scalars(query.where(User.access_code == payload.code)).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Неверный код доступа")
+    return serialize_public_user(user)
+
+
 @app.get("/api/locations", response_model=List[LocationRead])
 def read_locations(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     locations = db.scalars(select(Location).order_by(Location.id)).all()
@@ -532,22 +628,30 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Dict[str,
         raise HTTPException(status_code=422, detail="Название задачи не может быть пустым")
 
     author = get_user_or_404(db, payload.author_id)
-    ensure_can_manage_location(author, payload.location_id)
+    if author.role in {"director", "module_director"}:
+        effective_location_id = get_global_location(db).id
+    else:
+        if payload.location_id is None:
+            raise HTTPException(status_code=422, detail="Для задачи нужно выбрать заведение")
+        effective_location_id = payload.location_id
+
+    ensure_can_manage_location(author, effective_location_id)
     ensure_supported_priority(payload.priority)
 
-    location = db.get(Location, payload.location_id)
+    location = db.get(Location, effective_location_id)
     if location is None:
         raise HTTPException(status_code=404, detail="Заведение не найдено")
 
     assignee = None
     if payload.assignee_id is not None:
         assignee = get_user_or_404(db, payload.assignee_id)
-        ensure_can_manage_location(assignee, payload.location_id)
+
+    ensure_role_assignment(author, assignee, effective_location_id)
 
     task = Task(
         title=payload.title.strip(),
         description=payload.description,
-        location_id=payload.location_id,
+        location_id=effective_location_id,
         author_id=payload.author_id,
         assignee_id=payload.assignee_id,
         priority=payload.priority,
@@ -590,6 +694,28 @@ def update_task_status(
     db.commit()
     db.refresh(task)
     return serialize_task(task)
+
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(
+    task_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    task = db.get(Task, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    if task.author_id != user_id:
+        raise HTTPException(status_code=403, detail="Удалить задачу может только ее автор")
+    if task.status not in {"Выполнена", "Отменена"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Удалять можно только выполненные или закрытые задачи",
+        )
+
+    db.delete(task)
+    db.commit()
+    return {"deleted": True, "task_id": task_id}
 
 
 @app.post("/api/reports/email", response_model=EmailReportRead)

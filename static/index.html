@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Walker Local</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=14">
 </head>
 <body>
   <div class="app-shell">
@@ -23,6 +23,7 @@
           <option value="">Загрузка пользователей...</option>
         </select>
         <div id="current-role" class="role-hint">Роль не выбрана</div>
+        <button id="switch-user-button" class="sidebar-button" type="button">Сменить пользователя</button>
       </section>
 
       <section class="sidebar-section">
@@ -40,27 +41,27 @@
           <h2>Фильтры</h2>
         </div>
         <div class="filter-stack">
-          <button class="filter-item active" type="button">
+          <button class="filter-item active" type="button" data-status-filter="">
             <span>Все задачи</span>
             <span class="counter" id="counter-all">0</span>
           </button>
-          <button class="filter-item" type="button">
+          <button class="filter-item" type="button" data-status-filter="Новая">
             <span>Новые</span>
             <span class="counter" id="counter-new">0</span>
           </button>
-          <button class="filter-item" type="button">
+          <button class="filter-item" type="button" data-status-filter="В работе">
             <span>В работе</span>
             <span class="counter" id="counter-progress">0</span>
           </button>
-          <button class="filter-item" type="button">
+          <button class="filter-item" type="button" data-status-filter="Просрочена">
             <span>Просрочены</span>
             <span class="counter danger" id="counter-overdue">0</span>
           </button>
-          <button class="filter-item" type="button">
+          <button class="filter-item" type="button" data-status-filter="На проверке">
             <span>На проверке</span>
             <span class="counter" id="counter-review">0</span>
           </button>
-          <button class="filter-item" type="button">
+          <button class="filter-item" type="button" data-status-filter="Выполнена">
             <span>Выполнена</span>
             <span class="counter success" id="counter-done">0</span>
           </button>
@@ -108,20 +109,22 @@
           <span id="last-updated" class="last-updated">-</span>
         </div>
 
-        <div id="overdue-section" class="task-section overdue-section hidden">
-          <div class="task-section-title">
-            <h3>Просроченные</h3>
-            <span id="overdue-section-count" class="section-count">0</span>
+        <div id="split-task-board" class="split-task-board">
+          <div class="task-column">
+            <div class="task-section-title">
+              <h3>Мне поставили</h3>
+              <span id="assigned-section-count" class="section-count">0</span>
+            </div>
+            <div id="assigned-tasks" class="task-grid compact"></div>
           </div>
-          <div id="overdue-tasks" class="task-grid"></div>
-        </div>
 
-        <div id="regular-section" class="task-section">
-          <div class="task-section-title">
-            <h3>Текущие задачи</h3>
-            <span id="regular-section-count" class="section-count">0</span>
+          <div class="task-column">
+            <div class="task-section-title">
+              <h3>Я поставил</h3>
+              <span id="authored-section-count" class="section-count">0</span>
+            </div>
+            <div id="authored-tasks" class="task-grid compact"></div>
           </div>
-          <div id="regular-tasks" class="task-grid"></div>
         </div>
 
         <div id="empty-state" class="empty-state hidden">
@@ -149,7 +152,7 @@
           <textarea id="task-description-input" rows="4"></textarea>
         </label>
         <div class="form-grid">
-          <label class="form-field">
+          <label class="form-field" id="task-location-field">
             <span>Заведение</span>
             <select id="task-location-input" required></select>
           </label>
@@ -184,6 +187,31 @@
     </div>
   </div>
 
+  <div id="auth-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-backdrop"></div>
+    <div class="modal-panel small">
+      <div class="modal-head">
+        <h2 id="auth-modal-title">Вход по коду</h2>
+      </div>
+      <form id="auth-form" class="modal-form">
+        <label class="form-field">
+          <span>Пользователь</span>
+          <select id="auth-user-input" required>
+            <option value="">Загрузка пользователей...</option>
+          </select>
+        </label>
+        <label class="form-field">
+          <span>Четырехзначный код</span>
+          <input id="auth-code-input" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" required>
+        </label>
+        <div id="auth-form-error" class="form-error hidden"></div>
+        <div class="modal-actions">
+          <button class="primary-button" type="submit">Войти</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="status-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
     <div class="modal-backdrop" data-close-modal="status"></div>
     <div class="modal-panel small">
@@ -207,6 +235,6 @@
     </div>
   </div>
 
-  <script src="/script.js"></script>
+  <script src="/script.js?v=14"></script>
 </body>
 </html>

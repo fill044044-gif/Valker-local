@@ -125,6 +125,25 @@ textarea {
   padding: 0 10px;
 }
 
+.user-select:disabled {
+  background: #eef2f7;
+  color: #667085;
+}
+
+.sidebar-button {
+  min-height: 34px;
+  border: 1px solid rgba(203, 213, 225, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2f7;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sidebar-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .user-select:focus,
 .compact-select:focus,
 .search-box input:focus {
@@ -177,10 +196,16 @@ textarea {
   justify-content: space-between;
   min-height: 38px;
   padding: 0 11px;
+  cursor: pointer;
 }
 
 .location-item.unavailable {
   display: none;
+}
+
+.location-item.active {
+  border-color: rgba(47, 128, 237, 0.7);
+  background: rgba(47, 128, 237, 0.16);
 }
 
 .location-name {
@@ -364,6 +389,28 @@ textarea {
   gap: 10px;
 }
 
+.split-task-board {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.task-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 360px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.task-column + .task-column {
+  background: #ffffff;
+}
+
 .task-section-title h3 {
   font-size: 14px;
 }
@@ -379,6 +426,10 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
   gap: 12px;
+}
+
+.task-grid.compact {
+  grid-template-columns: 1fr;
 }
 
 .task-card {
