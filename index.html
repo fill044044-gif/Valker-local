@@ -271,7 +271,14 @@
 
       <section class="section">
         <h2>Текущий пользователь</h2>
-        <select id="userSelect"></select>
+        <select id="userSelect">
+          <option value="1">Генеральный директор · Генеральный директор</option>
+          <option value="2">Директор розницы · Директор розницы</option>
+          <option value="3">Управляющей модуля · Управляющей модуля</option>
+          <option value="4">Менеджер Биг Бен · Менеджер</option>
+          <option value="5">Менеджер Аксон · Менеджер</option>
+          <option value="6">Менеджер Лагерная · Менеджер</option>
+        </select>
         <p id="roleHint" class="hint"></p>
         <button id="openLogin" class="filter" type="button"><span>Сменить пользователя</span></button>
       </section>
@@ -328,7 +335,14 @@
     <div class="panel small">
       <div class="panel-head"><h2>Вход по коду</h2></div>
       <form id="loginForm">
-        <label><span>Пользователь</span><select id="loginUser"></select></label>
+        <label><span>Пользователь</span><select id="loginUser">
+          <option value="1">Генеральный директор</option>
+          <option value="2">Директор розницы</option>
+          <option value="3">Управляющей модуля</option>
+          <option value="4">Менеджер Биг Бен</option>
+          <option value="5">Менеджер Аксон</option>
+          <option value="6">Менеджер Лагерная</option>
+        </select></label>
         <label><span>Четырехзначный код</span><input id="loginCode" maxlength="4" inputmode="numeric" required></label>
         <div id="loginError" class="error hidden"></div>
         <div class="modal-actions"><button class="primary" type="submit">Войти</button></div>
@@ -400,7 +414,7 @@
     }
     function save() { localStorage.setItem("walkerDemoTasks", JSON.stringify(tasks)); }
     function user(id) { return users.find((item) => item.id === Number(id)); }
-    function location(id) { return locations.find((item) => item.id === Number(id)); }
+    function getLocation(id) { return locations.find((item) => item.id === Number(id)); }
     function currentUser() { return user(currentUserId); }
     function canSee(task) {
       const me = currentUser();
@@ -430,7 +444,7 @@
         if (selectedLocationId && task.locationId !== Number(selectedLocationId)) return false;
         if (selectedStatus && task.status !== selectedStatus) return false;
         if (selectedPriority && task.priority !== selectedPriority) return false;
-        const haystack = [task.title, task.description, task.status, task.priority, user(task.assigneeId).name, user(task.authorId).name, location(task.locationId).name].join(" ").toLowerCase();
+        const haystack = [task.title, task.description, task.status, task.priority, user(task.assigneeId).name, user(task.authorId).name, getLocation(task.locationId).name].join(" ").toLowerCase();
         return !query || haystack.includes(query);
       });
     }
@@ -492,8 +506,8 @@
       const me = currentUser();
       $("userSelect").value = me.id;
       $("loginUser").value = me.id;
-      $("roleHint").textContent = `${me.name} · доступ: ${me.locationIds.map((id) => location(id).name).join(", ")}`;
-      $("subtitle").textContent = `${me.name}: доступ ${me.locationIds.filter((id) => id !== 4).map((id) => location(id).name).join(", ") || "Все заведения"}`;
+      $("roleHint").textContent = `${me.name} · доступ: ${me.locationIds.map((id) => getLocation(id).name).join(", ")}`;
+      $("subtitle").textContent = `${me.name}: доступ ${me.locationIds.filter((id) => id !== 4).map((id) => getLocation(id).name).join(", ") || "Все заведения"}`;
       renderLocations();
       renderFilters();
       renderTasks();
@@ -561,7 +575,7 @@
         <div class="meta">
           <div><span>Статус</span><strong class="pill">${task.status}</strong></div>
           <div><span>Приоритет</span><strong class="pill">${task.priority}</strong></div>
-          <div><span>Заведение</span><strong>${location(task.locationId).name}</strong></div>
+          <div><span>Заведение</span><strong>${getLocation(task.locationId).name}</strong></div>
           <div><span>Исполнитель</span><strong>${user(task.assigneeId).name}</strong></div>
           <div><span>Автор</span><strong>${user(task.authorId).name}</strong></div>
           <div><span>Срок</span><strong>${task.dueDate || "Без срока"}</strong></div>
