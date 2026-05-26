@@ -33,6 +33,23 @@ const elements = {
   counterOverdue: document.querySelector("#counter-overdue"),
   counterReview: document.querySelector("#counter-review"),
   counterDone: document.querySelector("#counter-done"),
+  createTaskButton: document.querySelector("#create-task-button"),
+  taskModal: document.querySelector("#task-modal"),
+  taskForm: document.querySelector("#task-form"),
+  taskTitleInput: document.querySelector("#task-title-input"),
+  taskDescriptionInput: document.querySelector("#task-description-input"),
+  taskLocationInput: document.querySelector("#task-location-input"),
+  taskAssigneeInput: document.querySelector("#task-assignee-input"),
+  taskPriorityInput: document.querySelector("#task-priority-input"),
+  taskDueInput: document.querySelector("#task-due-input"),
+  taskCommentInput: document.querySelector("#task-comment-input"),
+  taskFormError: document.querySelector("#task-form-error"),
+  statusModal: document.querySelector("#status-modal"),
+  statusForm: document.querySelector("#status-form"),
+  statusTaskId: document.querySelector("#status-task-id"),
+  statusNextValue: document.querySelector("#status-next-value"),
+  statusCommentInput: document.querySelector("#status-comment-input"),
+  statusFormError: document.querySelector("#status-form-error"),
 };
 
 document.addEventListener("DOMContentLoaded", init);
@@ -72,6 +89,18 @@ function bindEvents() {
   elements.taskSearch.addEventListener("input", renderTasks);
   elements.statusFilter.addEventListener("change", renderTasks);
   elements.priorityFilter.addEventListener("change", renderTasks);
+  elements.createTaskButton.addEventListener("click", openCreateTaskModal);
+  elements.taskForm.addEventListener("submit", submitTaskForm);
+  elements.statusForm.addEventListener("submit", submitStatusForm);
+
+  document.addEventListener("click", (event) => {
+    const closeTarget = event.target.closest("[data-close-modal]");
+    if (!closeTarget) {
+      return;
+    }
+
+    closeModal(closeTarget.dataset.closeModal);
+  });
 }
 
 function startAutoRefresh() {
@@ -90,6 +119,23 @@ async function fetchJson(url) {
     throw new Error(`${url}: ${response.status}`);
   }
   return response.json();
+}
+
+async function sendJson(url, options) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers ?? {}),
+    },
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(data?.detail ?? `${url}: ${response.status}`);
+  }
+
+  return data;
 }
 
 async function loadTasksForCurrentUser(options = {}) {
@@ -151,6 +197,84 @@ function renderLocations() {
     `;
     item.querySelector(".location-name").textContent = location.name;
     elements.locationsList.appendChild(item);
+  }
+}
+
+function openCreateTaskModal() {
+  const user = getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  elements.taskForm.reset();
+  elements.taskPriorityInput.value = "Обычный";
+  hideFormError(elements.taskFormError);
+  renderTaskFormOptions(user);
+  elements.taskModal.classList.remove("hidden");
+  elements.taskTitleInput.focus();
+}
+
+function renderTaskFormOptions(user) {
+  const allowedLocationIds = new Set(user.locations.map((location) => location.id));
+  const locationOptions = user.role === "manager"
+    ? state.locations.filter((location) => allowedLocationIds.has(location.id))
+    : state.locations;
+
+  elements.taskLocationInput.innerHTML = "";
+  for (const location of locationOptions) {
+    const option = document.createElement("option");
+    option.value = location.id;
+    option.textContent = location.name;
+    elements.taskLocationInput.appendChild(option);
+  }
+  elements.taskLocationInput.disabled = user.role === "manager";
+
+  elements.taskAssigneeInput.innerHTML = "<option value=\"\">Не назначать</option>";
+  for (const assignee of state.users) {
+    const canAssign = isGlobalRole(user)
+      || assignee.locations.some((location) => allowedLocationIds.has(location.id));
+    if (!canAssign) {
+      continue;
+    }
+
+    const option = document.createElement("option");
+    option.value = assignee.id;
+    option.textContent = `${assignee.name} · ${roleLabel(assignee.role)}`;
+    elements.taskAssigneeInput.appendChild(option);
+  }
+
+  if (user.role === "manager") {
+    elements.taskAssigneeInput.value = String(user.id);
+  }
+}
+
+async function submitTaskForm(event) {
+  event.preventDefault();
+  const user = getCurrentUser();
+  if (!user) {
+    return;
+  }
+
+  const payload = {
+    title: elements.taskTitleInput.value.trim(),
+    description: elements.taskDescriptionInput.value.trim(),
+    location_id: Number(elements.taskLocationInput.value),
+    author_id: user.id,
+    assignee_id: elements.taskAssigneeInput.value ? Number(elements.taskAssigneeInput.value) : null,
+    priority: elements.taskPriorityInput.value,
+    due_at: elements.taskDueInput.value ? new Date(elements.taskDueInput.value).toISOString() : null,
+    comment: elements.taskCommentInput.value.trim(),
+  };
+
+  try {
+    await sendJson("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    closeModal("task");
+    await loadTasksForCurrentUser({ silent: true });
+  } catch (error) {
+    showFormError(elements.taskFormError, error.message);
   }
 }
 
@@ -248,25 +372,96 @@ function createTaskCard(task) {
 
 function renderTaskActions(container, task) {
   const user = getCurrentUser();
-  const canAct = user?.role === "owner" || user?.role === "manager";
   container.innerHTML = "";
 
-  if (!canAct) {
+  if (!user) {
     return;
   }
 
-  const actions = user.role === "owner"
-    ? ["На проверку", "Выполнена", "Отменена"]
-    : ["В работу", "На проверку"];
-
-  for (const action of actions) {
+  for (const action of getAvailableActions(task, user)) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `task-action${action === "Выполнена" ? " primary" : ""}`;
-    button.textContent = action;
+    button.className = `task-action${action.variant ? ` ${action.variant}` : ""}`;
+    button.textContent = action.label;
+    button.dataset.taskId = String(task.id);
+    button.dataset.nextStatus = action.nextStatus;
     button.title = `Действие для задачи #${task.id}`;
+    button.addEventListener("click", () => openStatusModal(task, action));
     container.appendChild(button);
   }
+}
+
+function getAvailableActions(task, user) {
+  const isManager = user.role === "manager";
+  const isGlobalUser = isGlobalRole(user);
+  const isAssignee = task.assignee?.id === user.id;
+  const isAuthor = task.author?.id === user.id;
+
+  if (isAssignee && isManager && task.status === "Новая") {
+    return [{ label: "В работу", nextStatus: "В работе" }];
+  }
+
+  if (isAssignee && isManager && task.status === "В работе") {
+    return [{ label: "На проверку", nextStatus: "На проверке", variant: "primary" }];
+  }
+
+  if ((isGlobalUser || isAuthor) && task.status === "На проверке") {
+    return [
+      { label: "Принять задачу", nextStatus: "Выполнена", variant: "primary" },
+      { label: "Вернуть в работу", nextStatus: "В работе" },
+      { label: "Закрыть задачу", nextStatus: "Отменена", variant: "danger" },
+    ];
+  }
+
+  return [];
+}
+
+function openStatusModal(task, action) {
+  hideFormError(elements.statusFormError);
+  elements.statusTaskId.value = String(task.id);
+  elements.statusNextValue.value = action.nextStatus;
+  elements.statusCommentInput.value = task.comment || "";
+  document.querySelector("#status-modal-title").textContent = `${action.label}: #${task.id}`;
+  elements.statusModal.classList.remove("hidden");
+  elements.statusCommentInput.focus();
+}
+
+async function submitStatusForm(event) {
+  event.preventDefault();
+  const taskId = elements.statusTaskId.value;
+  const status = elements.statusNextValue.value;
+  const comment = elements.statusCommentInput.value.trim();
+
+  try {
+    await sendJson(`/api/tasks/${taskId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, comment }),
+    });
+    closeModal("status");
+    await loadTasksForCurrentUser({ silent: true });
+  } catch (error) {
+    showFormError(elements.statusFormError, error.message);
+  }
+}
+
+function closeModal(name) {
+  if (name === "task") {
+    elements.taskModal.classList.add("hidden");
+  }
+
+  if (name === "status") {
+    elements.statusModal.classList.add("hidden");
+  }
+}
+
+function showFormError(element, message) {
+  element.textContent = message;
+  element.classList.remove("hidden");
+}
+
+function hideFormError(element) {
+  element.textContent = "";
+  element.classList.add("hidden");
 }
 
 function getFilteredTasks() {
@@ -329,10 +524,15 @@ function getCurrentUser() {
 
 function roleLabel(role) {
   const labels = {
-    owner: "Управляющий",
+    director: "Директор розницы",
+    owner: "Управляющей модуля",
     manager: "Менеджер",
   };
   return labels[role] ?? role;
+}
+
+function isGlobalRole(user) {
+  return user?.role === "director" || user?.role === "owner";
 }
 
 function statusClassName(status) {

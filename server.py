@@ -11,7 +11,7 @@ try:
     from pydantic import ConfigDict
 except ImportError:
     ConfigDict = None
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, create_engine, select, text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, create_engine, select, text, update
 from sqlalchemy.orm import Session, declarative_base, relationship, selectinload, sessionmaker
 
 
@@ -38,6 +38,7 @@ STATUSES = {
     "Перенесена",
 }
 FINAL_STATUSES = {"Выполнена", "Отменена", "Перенесена"}
+GLOBAL_ROLES = {"director", "owner"}
 
 
 user_locations = Table(
@@ -243,6 +244,39 @@ def migrate_existing_db() -> None:
         connection.execute(text("UPDATE tasks SET status = 'Новая' WHERE status = 'new'"))
 
 
+def merge_duplicate_users(
+    db: Session,
+    role: str,
+    canonical_name: str,
+    locations: List[Location],
+) -> None:
+    users = db.scalars(
+        select(User)
+        .options(selectinload(User.locations))
+        .where(User.role == role)
+        .order_by(User.id)
+    ).all()
+    if not users:
+        return
+
+    canonical = users[0]
+    canonical.name = canonical_name
+    canonical.locations = locations
+
+    for duplicate in users[1:]:
+        db.execute(
+            update(Task)
+            .where(Task.author_id == duplicate.id)
+            .values(author_id=canonical.id)
+        )
+        db.execute(
+            update(Task)
+            .where(Task.assignee_id == duplicate.id)
+            .values(assignee_id=canonical.id)
+        )
+        db.delete(duplicate)
+
+
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     migrate_existing_db()
@@ -259,9 +293,15 @@ def init_db() -> None:
                 db.add(locations_by_name[name])
         db.flush()
 
+        all_locations = list(locations_by_name.values())
+        merge_duplicate_users(db, "owner", "Управляющей модуля", all_locations)
+        merge_duplicate_users(db, "director", "Директор розницы", all_locations)
+        db.flush()
+
         existing_user_names = set(db.scalars(select(User.name)).all())
         default_users = [
-            ("Управляющий", "owner", list(locations_by_name.values())),
+            ("Директор розницы", "director", all_locations),
+            ("Управляющей модуля", "owner", all_locations),
             ("Менеджер Биг-вен", "manager", [locations_by_name["Биг-вен"]]),
             ("Менеджер Аксон", "manager", [locations_by_name["Аксон"]]),
             ("Менеджер Лагерная", "manager", [locations_by_name["Лагерная"]]),
@@ -350,7 +390,7 @@ def ensure_supported_status(status: str) -> None:
 
 
 def ensure_can_manage_location(user: User, location_id: int) -> None:
-    if user.role == "owner":
+    if user.role in GLOBAL_ROLES:
         return
     if user.role == "manager" and location_id in user_location_ids(user):
         return
@@ -392,7 +432,7 @@ def task_query_with_relations() -> Any:
 
 def visible_task_query(user: User) -> Any:
     query = task_query_with_relations().order_by(Task.id)
-    if user.role != "owner":
+    if user.role not in GLOBAL_ROLES:
         query = query.where(Task.location_id.in_(user_location_ids(user)))
     return query
 
